@@ -21,13 +21,6 @@ stat <- summary(df)
 
 nas <- as.data.frame(stat[7, ])
 
-df_without_na <- na.omit(df)
-df_without_na_default <- df_without_na[df_without_na$default == 1, ]
-
-df_default <- df[df$default == 1, ]
-df_no_default <- df[df$default == 0, ]
-
-
 
 remove_outliers <- function(column)
 {
@@ -70,3 +63,16 @@ temp %>%
 
 
 # splitting data  ---------------------------------------------------------
+temp <- cbind(df[, names(df) %in% c('ID', 'obs_date', 'default')], temp)
+df_default <- temp[temp$default == 1, ]
+df_no_default <- temp[temp$default == 0, ]
+
+for (i in 1:10) {
+  assign(paste0('df_sample_', i),
+         rbind(df_no_default %>% sample_n(length(
+           df_default$default
+         )), df_default))
+}
+
+
+
