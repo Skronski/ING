@@ -1,6 +1,6 @@
 # libraries ---------------------------------------------------------------
-
-
+library(dplyr)
+library(ggplot2)
 
 
 
@@ -21,7 +21,9 @@ df$obs_date <-  as.Date(df$obs_date, format = "%Y-%m-%d")
 # visualization -----------------------------------------------------------
 
 
-
+df %>% ggplot(aes(x = df$default)) +
+  geom_bar()+
+  xlab('default')
 
 
 
