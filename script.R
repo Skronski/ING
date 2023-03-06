@@ -48,7 +48,6 @@ temp <- as.data.frame(apply(temp, MARGIN = 2,  FUN = na_imputation))
 
 
 # visualization -----------------------------------------------------------
-histogram(bins = 10)
 
 temp %>%
   pivot_longer(cols = colnames(temp)) %>%
@@ -61,6 +60,11 @@ temp %>%
   geom_violin(aes(x = name)) +
   facet_wrap(~name, scales = 'free')
 
+temp %>%
+  pivot_longer(cols = colnames(temp)) %>%
+  ggplot(aes(y = value)) +
+  geom_boxplot(aes(x = name)) +
+  facet_wrap(~name, scales = 'free')
 
 # splitting data  ---------------------------------------------------------
 temp <- cbind(df[, names(df) %in% c('ID', 'obs_date', 'default')], temp)
@@ -73,6 +77,10 @@ for (i in 1:10) {
            df_default$default
          )), df_default))
 }
+for (i in 1:10) {
+  write.csv(get(paste0('df_sample_', i)), file = paste0(path, '\\', paste0('df_sample_', i), '.csv'),row.names=FALSE)
+}
+
 
 
 
