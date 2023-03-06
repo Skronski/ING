@@ -30,3 +30,6 @@ df %>% ggplot(aes(x = df$default)) +
 
 df_default <- df[df$default==1,]
 df_no_default <- df[df$default==0,]
+
+
+#test
