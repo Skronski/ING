@@ -133,12 +133,52 @@ dane_log <- log(scaled_data_2[,1:length(scaled_data_2[1,])])
 head(dane_log)
 names(dane_log) <- paste0(colnames(dane_log),"_log")
 
+
+
+
+
+
+
+dane_exp <- exp(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_exp)
+names(dane_exp) <- paste0(colnames(dane_log),"_exp")
+
+
+dane_sqrt <- sqrt(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_sqrt)
+names(dane_sqrt) <- paste0(colnames(dane_sqrt),"_sqrt")
+
+dane_3<- scaled_data_2[,1:length(scaled_data_2[1,])]^3
+head(dane_3)
+names(dane_sqrt) <- paste0(colnames(dane_3),"_3")
+
+dane_4 <- scaled_data_2[,1:length(scaled_data_2[1,])]^4
+head(dane_4)
+names(dane_4) <- paste0(colnames(dane_4),"_4")
+
+dane_sin <- sin(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_sin)
+names(dane_sin) <- paste0(colnames(dane_sin),"_sin")
+dane_1_x <-1/(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_1_x)
+names(dane_1_x) <- paste0(colnames(dane_1_x),"_1_x")
+
+
+
+
+
+
+
+
+
+
+
 default <- df_sample_1$default
-df <- cbind.data.frame(dane_log,data_2, scaled_df_sample_1, default)
+df <- cbind.data.frame(dane_log, default,dane_exp, dane_3, dane_4, dane_sin, dane_sqrt)
 
 
 # test/train --------------------------------------------------------------
-
+scaled_df_sample_1$default <- default
 train <- scaled_df_sample_1 %>% sample_frac(.7, replace = F)
 
 test <- setdiff(scaled_df_sample_1,train)
@@ -191,11 +231,14 @@ cv_model <- cv.glmnet(train_matrix,y, alpha = 1, lambda = lambdas_to_try)
 best_lambda <- cv_model$lambda.min
 model_lasso <- glmnet(train_matrix,y, alpha = 1,  lambda = best_lambda, family = 'binomial')
 
-test_pred <- predict(model_lasso, s = best_lambda, newx = as.matrix(test[,!names(test)%in% c('default')]), type = 'response')
+test_pred_lasso <- predict(model_lasso, s = best_lambda, newx = as.matrix(test[,!names(test)%in% c('default')]), type = 'response')
 
 
-auc(test$default, test_pred)
-roc_score <- roc(test$default, test_pred)
+auc(test$default, test_pred_lasso)
+roc_score_lasso <- roc(test$default, test_pred_lasso)
 plot(roc_score)
 
+plot( roc_score, colorize = TRUE)
+plot(roc_score_lasso, add = TRUE,col = 'red')
+abline(v = 1)
 
