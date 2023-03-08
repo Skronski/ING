@@ -326,11 +326,3 @@ ggplot() +
   ylab("Score")+
   ggtitle("50-fold crossvalidation auc scores")
 
-
-
-
-
-
-
-
-
