@@ -1,7 +1,6 @@
 # libraries ---------------------------------------------------------------
 library(dplyr)
 library(ggplot2)
-
 library(tidyr)
 library(caret)
 library(regclass)
@@ -9,10 +8,9 @@ library(pROC)
 library(glmnet)
 library(rpart)
 library(rpart.plot)
-
+library(lubridate)
 
 path <- 'D:\\Informatyka i ekonometria\\ING'
-path <- 'C:\\Users\\s196203\\Downloads\\preliminary_task\\preliminary_task'
 setwd(path)
 
 
@@ -21,20 +19,13 @@ setwd(path)
 df <- read.csv('credit_sample.csv')
 
 summary(df)
-df$obs_date <-  as.Date(df$obs_date, format = "%Y-%m-%d")
 
+# date transformation -----------------------------------------------------
 
-# visualization -----------------------------------------------------------
+df$obs_date <-  as.POSIXlt(df$obs_date, format = "%Y-%m-%d")
+df$month_x <- sin(2*pi*month(df$obs_date)/12)
+df$month_y <- cos(2*pi*month(df$obs_date)/12)
 
-
-df %>% ggplot(aes(x = default)) +
-  geom_bar()+
-  xlab('default')
-
-
-
-df_default <- df[df$default==1,]
-df_no_default <- df[df$default==0,]
 
 
 # outliers, missing values ------------------------------------------------
@@ -111,12 +102,15 @@ for (i in 1:10) {
 
 # preprocessing -----------------------------------------------------------
 
-tmp <- preProcess(df_sample_1[!names(df_sample_1) %in% c('ID', 'obs_date', 'default')], "range")
+tmp <- preProcess(df_sample_1[!names(df_sample_1) %in% c('ID', 'obs_date', 'default', 'month_x', 'month_y')], "range")
+df_sample_1$ID <- NULL
+df_sample_1$obs_date <- NULL
+default <- df_sample_1$default
+df_sample_1$default <- NULL
+
 scaled_df_sample_1 <- predict(tmp, df_sample_1)
 
-scaled_df_sample_1$ID <- NULL
-scaled_df_sample_1$obs_date <- NULL
-scaled_df_sample_1$default <- NULL
+
 
 
 
@@ -175,8 +169,9 @@ names(dane_1_x) <- paste0(colnames(dane_1_x),"_1_x")
 
 
 
-default <- df_sample_1$default
-df <- cbind.data.frame(dane_log, default,dane_exp, dane_3, dane_4, dane_sin, dane_sqrt)
+
+
+df <- cbind.data.frame(dane_log, default,dane_exp, dane_3, dane_4, dane_sin, dane_sqrt, dane_1_x)
 
 
 # test/train --------------------------------------------------------------
@@ -249,8 +244,8 @@ abline(v = 1)
 
 
 
-train <- scaled_df_sample_1 %>% sample_frac(.7, replace = F)
-test <- setdiff(scaled_df_sample_1,train)
+train <- df %>% sample_frac(.7, replace = F)
+test <- setdiff(df,train)
 
 
 fit.tree <-  rpart(default~., data=train, method = "class", cp=0.008)
@@ -273,7 +268,7 @@ plot(roc_score,add=T, col = 'green')
 
 
 # crossvalidation ---------------------------------------------------------
-k_fold <- 50
+k_fold <- 30
 columns = c("auc_lasso","auc_logistic","auc_tree")
 df_auc = data.frame(matrix(nrow = k_fold, ncol = length(columns)))
 colnames(df_auc) = columns
@@ -315,8 +310,8 @@ for (i in 1:k_fold)
 
 
   df_auc$auc_tree[i] <-  auc(test$default, pred.tree[,1])
+  print(i)
 }
-
 
 ggplot() +
   geom_boxplot(aes("AUC \n Decision Trees",df_auc$auc_tree))+
