@@ -271,3 +271,10 @@ typeof(pred.tree[,1])
 auc(test$default, pred.tree[,1])
 roc_score <- roc(test$default,pred.tree[,1])
 plot(roc_score,add=T, col = 'green')
+
+
+
+
+
+
+#test bartek
