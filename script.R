@@ -278,3 +278,7 @@ plot(roc_score,add=T, col = 'green')
 
 
 #test bartek
+
+
+
+#drugi test
