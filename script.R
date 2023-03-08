@@ -11,6 +11,7 @@ library(glmnet)
 
 
 path <- 'D:\\Informatyka i ekonometria\\ING'
+path <- 'C:\\Users\\s196203\\Downloads\\preliminary_task\\preliminary_task'
 setwd(path)
 
 
@@ -25,7 +26,7 @@ df$obs_date <-  as.Date(df$obs_date, format = "%Y-%m-%d")
 # visualization -----------------------------------------------------------
 
 
-df %>% ggplot(aes(x = df$default)) +
+df %>% ggplot(aes(x = default)) +
   geom_bar()+
   xlab('default')
 
@@ -193,10 +194,10 @@ summary(step_model)
 VIF(step_model)
 
 model_vif <- glm(formula = default ~ Var_01  + Var_03 + Var_05 + Var_06 +
-      Var_10  + Var_12 + Var_13 + Var_14 + Var_15 + Var_17 +
-      Var_20 + Var_22 + Var_23 + Var_24 + Var_25 + Var_27 + Var_29 +
-      Var_31 + Var_36 + Var_38 + Var_39, family = "binomial",
-    data = train)
+                   Var_10  + Var_12 + Var_13 + Var_14 + Var_15 + Var_17 +
+                   Var_20 + Var_22 + Var_23 + Var_24 + Var_25 + Var_27 + Var_29 +
+                   Var_31 + Var_36 + Var_38 + Var_39, family = "binomial",
+                 data = train)
 summary(model_vif)
 VIF(model_vif)
 
@@ -242,3 +243,31 @@ plot( roc_score, colorize = TRUE)
 plot(roc_score_lasso, add = TRUE,col = 'red')
 abline(v = 1)
 
+
+
+# tree --------------------------------------------------------------------
+
+library(rpart)
+library(rpart.plot)
+
+train <- scaled_df_sample_1 %>% sample_frac(.7, replace = F)
+test <- setdiff(scaled_df_sample_1,train)
+
+
+fit.tree = rpart(default~., data=train, method = "class", cp=0.008)
+fit.tree
+rpart.plot(fit.tree)
+
+
+fit.tree$variable.importance
+
+
+pred.tree = predict(fit.tree, test, type = "prob")
+
+table(pred.tree,test$default)
+
+typeof(pred.tree[,1])
+
+auc(test$default, pred.tree[,1])
+roc_score <- roc(test$default,pred.tree[,1])
+plot(roc_score,add=T, col = 'green')
