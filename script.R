@@ -7,7 +7,8 @@ library(caret)
 library(regclass)
 library(pROC)
 library(glmnet)
-
+library(rpart)
+library(rpart.plot)
 
 
 path <- 'D:\\Informatyka i ekonometria\\ING'
@@ -219,7 +220,6 @@ plot(roc_score)
 # lasso -------------------------------------------------------------------
 
 train <- df %>% sample_frac(.7, replace = F)
-
 test <- setdiff(df,train)
 
 lambdas_to_try <- 10^seq(-3, 5, length.out = 100)
@@ -247,14 +247,13 @@ abline(v = 1)
 
 # tree --------------------------------------------------------------------
 
-library(rpart)
-library(rpart.plot)
+
 
 train <- scaled_df_sample_1 %>% sample_frac(.7, replace = F)
 test <- setdiff(scaled_df_sample_1,train)
 
 
-fit.tree = rpart(default~., data=train, method = "class", cp=0.008)
+fit.tree <-  rpart(default~., data=train, method = "class", cp=0.008)
 fit.tree
 rpart.plot(fit.tree)
 
@@ -273,8 +272,65 @@ roc_score <- roc(test$default,pred.tree[,1])
 plot(roc_score,add=T, col = 'green')
 
 
+# crossvalidation ---------------------------------------------------------
+k_fold <- 50
+columns = c("auc_lasso","auc_logistic","auc_tree")
+df_auc = data.frame(matrix(nrow = k_fold, ncol = length(columns)))
+colnames(df_auc) = columns
+
+
+for (i in 1:k_fold)
+{
+  train <- df %>% sample_frac(.8, replace = F)
+  test <- setdiff(df,train)
+
+
+  model_vif <- glm(formula = default ~ Var_01  + Var_03 + Var_05 + Var_06 +
+                     Var_10  + Var_12 + Var_13 + Var_14 + Var_15 + Var_17 +
+                     Var_20 + Var_22 + Var_23 + Var_24 + Var_25 + Var_27 + Var_29 +
+                     Var_31 + Var_36 + Var_38 + Var_39, family = "binomial",
+                   data = train)
+
+  test_pred <- predict(model_vif,test[!names(test) %in% c('default')], type = 'response')
+
+  df_auc$auc_logistic[i] <-  auc(test$default, test_pred)
+
+  #lasso
+
+
+  train_matrix <- as.matrix(train[, !names(train)%in% c('default')])
+  y <- train$default
+
+  cv_model <- cv.glmnet(train_matrix,y, alpha = 1, lambda = lambdas_to_try)
+  best_lambda <- cv_model$lambda.min
+  model_lasso <- glmnet(train_matrix,y, alpha = 1,  lambda = best_lambda, family = 'binomial')
+
+  test_pred_lasso <- predict(model_lasso, s = best_lambda, newx = as.matrix(test[,!names(test)%in% c('default')]), type = 'response')
+  df_auc$auc_lasso[i] <-  auc(test$default, test_pred_lasso)
+
+  # tree
+
+  fit.tree <-  rpart(default~., data=train, method = "class", cp=0.008)
+  pred.tree = predict(fit.tree, test, type = "prob")
+
+
+  df_auc$auc_tree[i] <-  auc(test$default, pred.tree[,1])
+}
+
+
+ggplot() +
+  geom_boxplot(aes("AUC \n Decision Trees",df_auc$auc_tree))+
+  geom_boxplot(aes("AUC logistic regression\n with LASSO",df_auc$auc_lasso))+
+  geom_boxplot(aes("AUC Logistic Regression",df_auc$auc_logistic))+
+  xlab("AUC factor")+
+  ylab("Score")+
+  ggtitle("50-fold crossvalidation auc scores")
 
 
 
 
-#test bartek
+
+
+
+
+
