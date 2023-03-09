@@ -9,6 +9,7 @@ library(glmnet)
 library(rpart)
 library(rpart.plot)
 library(lubridate)
+library(performanceEstimation)
 
 path <- 'D:\\Informatyka i ekonometria\\ING'
 setwd(path)
@@ -163,14 +164,6 @@ names(dane_1_x) <- paste0(colnames(dane_1_x),"_1_x")
 
 
 
-
-
-
-
-
-
-
-
 df <- cbind.data.frame(dane_log, default,dane_exp, dane_3, dane_4, dane_sin, dane_sqrt, dane_1_x)
 
 
@@ -319,5 +312,142 @@ ggplot() +
   geom_boxplot(aes("AUC Logistic Regression",df_auc$auc_logistic))+
   xlab("AUC factor")+
   ylab("Score")+
-  ggtitle("50-fold crossvalidation auc scores")
+  ggtitle(paste0(k_fold,"-fold crossvalidation auc scores"))
+
+
+
+# oversampling ------------------------------------------------------------
+
+
+
+
+temp$default <- as.factor(ifelse(df$default == 1,"rare","common"))
+
+temp$obs_date <- NULL
+
+yy <- smote(default~., temp, perc.over = 6)
+
+
+yy$default <- ifelse(yy$default == "rare",1,0)
+sum(as.numeric(yy$default))
+
+df_sample_1 <- yy
+
+write.csv(df_sample_1,
+          file = paste0(path, '\\', 'oversampled_df', '.csv'),
+          row.names = FALSE)
+
+warnings()
+
+
+
+tmp <- preProcess(df_sample_1[!names(df_sample_1) %in% c('ID', 'obs_date', 'default', 'month_x', 'month_y')], "range")
+df_sample_1$ID <- NULL
+df_sample_1$obs_date <- NULL
+default <- df_sample_1$default
+df_sample_1$default <- NULL
+
+scaled_df_sample_1 <- predict(tmp, df_sample_1)
+
+
+
+
+
+
+data_2 <- scaled_df_sample_1[,1:length(scaled_df_sample_1[1,])]^2
+names(data_2) <- paste0(colnames(data_2),"_2")
+
+scaled_data_2 <- scaled_df_sample_1
+
+for (i in 1:length(scaled_data_2[1,])) {
+  scaled_data_2[,i]<- ifelse(scaled_data_2[,i] <0.01, 0.01,scaled_data_2[,i])
+}
+
+
+dane_log <- log(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_log)
+names(dane_log) <- paste0(colnames(dane_log),"_log")
+
+
+
+
+
+
+
+dane_exp <- exp(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_exp)
+names(dane_exp) <- paste0(colnames(dane_log),"_exp")
+
+
+dane_sqrt <- sqrt(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_sqrt)
+names(dane_sqrt) <- paste0(colnames(dane_sqrt),"_sqrt")
+
+dane_3<- scaled_data_2[,1:length(scaled_data_2[1,])]^3
+head(dane_3)
+names(dane_sqrt) <- paste0(colnames(dane_3),"_3")
+
+dane_4 <- scaled_data_2[,1:length(scaled_data_2[1,])]^4
+head(dane_4)
+names(dane_4) <- paste0(colnames(dane_4),"_4")
+
+dane_sin <- sin(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_sin)
+names(dane_sin) <- paste0(colnames(dane_sin),"_sin")
+dane_1_x <-1/(scaled_data_2[,1:length(scaled_data_2[1,])])
+head(dane_1_x)
+names(dane_1_x) <- paste0(colnames(dane_1_x),"_1_x")
+
+
+
+
+
+
+df <- cbind.data.frame(dane_log, default,dane_exp, dane_3, dane_4, dane_sin, dane_sqrt, dane_1_x)
+
+
+
+train <- df %>% sample_frac(.7, replace = F)
+test <- setdiff(df,train)
+
+
+fit.tree <-  rpart(default~., data=train, method = "class", cp=0.008)
+fit.tree
+rpart.plot(fit.tree)
+
+
+fit.tree$variable.importance
+
+
+pred.tree = predict(fit.tree, test, type = "prob")
+
+table(pred.tree,test$default)
+
+typeof(pred.tree[,1])
+
+auc(test$default, pred.tree[,1])
+roc_score <- roc(test$default,pred.tree[,1])
+plot(roc_score,add=T, col = 'green')
+
+lambdas_to_try <- 10^seq(-3, 5, length.out = 100)
+
+
+train_matrix <- as.matrix(train[, !names(train)%in% c('default')])
+y <- train$default
+
+cv_model <- cv.glmnet(train_matrix,y, alpha = 1, lambda = lambdas_to_try)
+best_lambda <- cv_model$lambda.min
+model_lasso <- glmnet(train_matrix,y, alpha = 1,  lambda = best_lambda, family = 'binomial')
+
+test_pred_lasso <- predict(model_lasso, s = best_lambda, newx = as.matrix(test[,!names(test)%in% c('default')]), type = 'response')
+
+
+auc(test$default, test_pred_lasso)
+roc_score_lasso <- roc(test$default, test_pred_lasso)
+plot(roc_score)
+
+plot( roc_score, colorize = TRUE)
+plot(roc_score_lasso, add = TRUE,col = 'red')
+abline(v = 1)
+
 
